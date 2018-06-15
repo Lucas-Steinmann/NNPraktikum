@@ -1,13 +1,16 @@
+from datetime import datetime
 
 import numpy as np
 
-from util.loss_functions import CrossEntropyError
+from util.loss_functions import BinaryCrossEntropyError
+from util.loss_functions import SumSquaredError
+from util.loss_functions import MeanSquaredError
+from util.loss_functions import DifferentError
+from util.loss_functions import AbsoluteError
 from model.logistic_layer import LogisticLayer
 from model.classifier import Classifier
 
 from sklearn.metrics import accuracy_score
-
-import sys
 
 class MultilayerPerceptron(Classifier):
     """
@@ -23,17 +26,17 @@ class MultilayerPerceptron(Classifier):
 
         Parameters
         ----------
-        train : list
-        valid : list
-        test : list
+        train : DataSet
+        valid : DataSet
+        test : DataSet
         learningRate : float
         epochs : positive int
 
         Attributes
         ----------
-        trainingSet : list
-        validationSet : list
-        testSet : list
+        trainingSet : DataSet
+        validationSet : DataSet
+        testSet : DataSet
         learningRate : float
         epochs : positive int
         performances: array of floats
@@ -43,7 +46,6 @@ class MultilayerPerceptron(Classifier):
         self.epochs = epochs
         self.outputTask = outputTask  # Either classification or regression
         self.outputActivation = outputActivation
-        self.cost = cost
 
         self.trainingSet = train
         self.validationSet = valid
@@ -73,23 +75,31 @@ class MultilayerPerceptron(Classifier):
         self.layers = []
 
         # Input layer
-        inputActivation = "sigmoid"
-        self.layers.append(LogisticLayer(train.input.shape[1], 128, 
+        inputActivation = "relu"
+        self.layers.append(LogisticLayer(train.input.shape[1], 128,
                            None, inputActivation, False))
 
+        # Hidden layer
+        hiddenActivation = "relu"
+        self.layers.append(LogisticLayer(128, 64,
+                           None, hiddenActivation, False))
+
         # Output layer
-        outputActivation = "softmax"
-        self.layers.append(LogisticLayer(128, 10, 
+        # use sigmoid instead of softmax since softmax doesn't make sense for one output variable
+        outputActivation = "sigmoid"
+        self.layers.append(LogisticLayer(64, 1,
                            None, outputActivation, True))
 
         self.inputWeights = inputWeights
 
+        # we don't add bias here since we are doing it during forward pass
+
         # add bias values ("1"s) at the beginning of all data sets
-        self.trainingSet.input = np.insert(self.trainingSet.input, 0, 1,
-                                            axis=1)
-        self.validationSet.input = np.insert(self.validationSet.input, 0, 1,
-                                              axis=1)
-        self.testSet.input = np.insert(self.testSet.input, 0, 1, axis=1)
+        # self.trainingSet.input = np.insert(self.trainingSet.input, 0, 1,
+        #                                     axis=1)
+        # self.validationSet.input = np.insert(self.validationSet.input, 0, 1,
+        #                                       axis=1)
+        # self.testSet.input = np.insert(self.testSet.input, 0, 1, axis=1)
 
 
     def _get_layer(self, layer_index):
@@ -113,6 +123,12 @@ class MultilayerPerceptron(Classifier):
         # Here you have to propagate forward through the layers
         # And remember the activation values of each layer
         """
+        addBias = ( lambda data: np.append(data, 1.0) )
+
+        temp = inp
+        for l in self.layers:
+            temp = l.forward(addBias(temp))
+        return temp
         
     def _compute_error(self, target):
         """
@@ -123,13 +139,15 @@ class MultilayerPerceptron(Classifier):
         ndarray :
             a numpy array (1,nOut) containing the output of the layer
         """
-        pass
+        return self.loss.calculateError(target, self._get_output_layer().outp)
     
     def _update_weights(self, learningRate):
         """
         Update the weights of the layers by propagating back the error
         """
-        pass
+        for l in self.layers:
+            l.updateWeights(learningRate)
+
         
     def train(self, verbose=True):
         """Train the Multi-layer Perceptrons
@@ -139,14 +157,43 @@ class MultilayerPerceptron(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
-        pass
+
+        if verbose:
+            result = self.evaluate(self.validationSet)
+            accuracy = accuracy_score(self.validationSet.label, result)
+            print('Before training: Accuracy: {0}'.format(accuracy))
+
+
+        for i in range(self.epochs):
+            start = datetime.now()
+            for inp, label in zip(self.trainingSet.input, self.trainingSet.label):
+                output = self._feed_forward(inp)
+                deltas = self.loss.calculateDerivative(label, output)
+
+                for layer in range(-1, -len(self.layers) - 1, -1):
+                    if layer == -1:
+                        next_weights = 1.0
+                    else:
+                        next_weights = self._get_layer(layer + 1).weights[:-1]
+                    deltas = self._get_layer(layer).computeDerivative(deltas, next_weights)
+
+                self._update_weights(self.learningRate / (i + 1))
+
+            if verbose:
+                result = self.evaluate(self.validationSet)
+                accuracy = accuracy_score(self.validationSet.label, result)
+                self.performances.append(accuracy)
+                end = datetime.now()
+                print('Iteration {0}: Accuracy: {1} (time: {2})'.format(i, accuracy, end - start))
+
 
 
 
     def classify(self, test_instance):
         # Classify an instance given the model of the classifier
         # You need to implement something here
-        pass
+
+        return self._feed_forward(test_instance) >= 0.5
         
 
     def evaluate(self, test=None):
