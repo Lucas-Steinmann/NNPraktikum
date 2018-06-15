@@ -124,5 +124,5 @@ class CrossEntropyError(Error):
     def calculateError(self, target, output):
         return -np.sum(target * np.log(output))
         
-    def calculateDerivativer(self, target, output):
+    def calculateDerivative(self, target, output):
         return -target * 1 / output

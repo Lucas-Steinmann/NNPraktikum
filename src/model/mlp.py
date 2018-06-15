@@ -2,11 +2,7 @@ from datetime import datetime
 
 import numpy as np
 
-from util.loss_functions import BinaryCrossEntropyError
-from util.loss_functions import SumSquaredError
-from util.loss_functions import MeanSquaredError
-from util.loss_functions import DifferentError
-from util.loss_functions import AbsoluteError
+from util.loss_functions import *
 from model.logistic_layer import LogisticLayer
 from model.classifier import Classifier
 
@@ -19,7 +15,7 @@ class MultilayerPerceptron(Classifier):
 
     def __init__(self, train, valid, test, layers=None, inputWeights=None,
                  outputTask='classification', outputActivation='softmax',
-                 loss='bce', learningRate=0.01, epochs=50):
+                 loss='ce', learningRate=0.01, epochs=50):
 
         """
         A MNIST recognizer based on multi-layer perceptron algorithm
@@ -51,8 +47,8 @@ class MultilayerPerceptron(Classifier):
         self.validationSet = valid
         self.testSet = test
         
-        if loss == 'bce':
-            self.loss = BinaryCrossEntropyError()
+        if loss == 'ce':
+            self.loss = CrossEntropyError()
         elif loss == 'sse':
             self.loss = SumSquaredError()
         elif loss == 'mse':
@@ -75,19 +71,18 @@ class MultilayerPerceptron(Classifier):
         self.layers = []
 
         # Input layer
-        inputActivation = "relu"
+        inputActivation = "sigmoid"
         self.layers.append(LogisticLayer(train.input.shape[1], 128,
                            None, inputActivation, False))
 
         # Hidden layer
-        hiddenActivation = "relu"
+        hiddenActivation = "sigmoid"
         self.layers.append(LogisticLayer(128, 64,
                            None, hiddenActivation, False))
 
         # Output layer
-        # use sigmoid instead of softmax since softmax doesn't make sense for one output variable
-        outputActivation = "sigmoid"
-        self.layers.append(LogisticLayer(64, 1,
+        outputActivation = "softmax"
+        self.layers.append(LogisticLayer(64, 10,
                            None, outputActivation, True))
 
         self.inputWeights = inputWeights
@@ -160,7 +155,7 @@ class MultilayerPerceptron(Classifier):
 
         if verbose:
             result = self.evaluate(self.validationSet)
-            accuracy = accuracy_score(self.validationSet.label, result)
+            accuracy = accuracy_score(map(np.argmax, self.validationSet.label), result)
             print('Before training: Accuracy: {0}'.format(accuracy))
 
 
@@ -177,11 +172,11 @@ class MultilayerPerceptron(Classifier):
                         next_weights = self._get_layer(layer + 1).weights[:-1]
                     deltas = self._get_layer(layer).computeDerivative(deltas, next_weights)
 
-                self._update_weights(self.learningRate / (i + 1))
+                self._update_weights(self.learningRate)
 
             if verbose:
                 result = self.evaluate(self.validationSet)
-                accuracy = accuracy_score(self.validationSet.label, result)
+                accuracy = accuracy_score(map(np.argmax, self.validationSet.label), result)
                 self.performances.append(accuracy)
                 end = datetime.now()
                 print('Iteration {0}: Accuracy: {1} (time: {2})'.format(i, accuracy, end - start))
@@ -193,7 +188,7 @@ class MultilayerPerceptron(Classifier):
         # Classify an instance given the model of the classifier
         # You need to implement something here
 
-        return self._feed_forward(test_instance) >= 0.5
+        return np.argmax(self._feed_forward(test_instance))
         
 
     def evaluate(self, test=None):
