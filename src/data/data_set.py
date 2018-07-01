@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
 
 class DataSet(object):
     """
@@ -36,15 +35,9 @@ class DataSet(object):
         # Transform all labels which is not the targetDigit to False,
         # The label of targetDigit will be True,
         if oneHot:
-            if targetDigit is None:
-
-                def mapping(a):
-                    tmp = np.zeros(10)
-                    tmp[a] = 1
-                    return tmp
-            else:
-                mapping = ( lambda a : 1 if str(a) == targetDigit else 0 )
-            self.label = list(map(mapping, self.label))
+            self.label = list(map(lambda a: 1 
+                            if str(a) == targetDigit else 0, 
+                            self.label))
 
     def __iter__(self):
         return self.input.__iter__()

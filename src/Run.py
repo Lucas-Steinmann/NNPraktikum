@@ -13,13 +13,13 @@ from report.performance_plot import PerformancePlot
 
 def main():
     data = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000,
-                                                    oneHot=True, targetDigit=None)
+                                                    oneHot=False, targetDigit=None)
 
     myMLPClassifier = MultilayerPerceptron(data.trainingSet,
                                            data.validationSet,
                                            data.testSet,
                                            learningRate=0.0005,
-                                           epochs=20)
+                                           epochs=40)
                                         
     
     # Report the result #

@@ -71,19 +71,23 @@ class MultilayerPerceptron(Classifier):
         self.layers = []
 
         # Input layer
-        inputActivation = "sigmoid"
-        self.layers.append(LogisticLayer(train.input.shape[1], 128,
-                           None, inputActivation, False))
+        inputActivation = "relu"
+        self.layers.append(LogisticLayer(train.input.shape[1], 512,
+                           None, inputActivation, False, len(train.input)))
 
         # Hidden layer
+        hiddenActivation = "relu"
+        self.layers.append(LogisticLayer(512, 512,
+                           None, hiddenActivation, False, len(train.input)))
+
         hiddenActivation = "sigmoid"
-        self.layers.append(LogisticLayer(128, 64,
-                           None, hiddenActivation, False))
+        self.layers.append(LogisticLayer(512, 512,
+                           None, hiddenActivation, False, len(train.input)))
 
         # Output layer
         outputActivation = "softmax"
-        self.layers.append(LogisticLayer(64, 10,
-                           None, outputActivation, True))
+        self.layers.append(LogisticLayer(512, 10,
+                           None, outputActivation, True, len(train.input)))
 
         self.inputWeights = inputWeights
 
@@ -105,6 +109,11 @@ class MultilayerPerceptron(Classifier):
 
     def _get_output_layer(self):
         return self._get_layer(-1)
+
+    def _to_one_hot(self, label):
+        tmp = np.zeros(10)
+        tmp[label] = 1
+        return tmp
 
     def _feed_forward(self, inp):
         """
@@ -134,7 +143,7 @@ class MultilayerPerceptron(Classifier):
         ndarray :
             a numpy array (1,nOut) containing the output of the layer
         """
-        return self.loss.calculateError(target, self._get_output_layer().outp)
+        return self.loss.calculateError(self._to_one_hot(target), self._get_output_layer().outp)
     
     def _update_weights(self, learningRate):
         """
@@ -155,15 +164,27 @@ class MultilayerPerceptron(Classifier):
 
         if verbose:
             result = self.evaluate(self.validationSet)
-            accuracy = accuracy_score(map(np.argmax, self.validationSet.label), result)
+            accuracy = accuracy_score(self.validationSet.label, result)
             print('Before training: Accuracy: {0}'.format(accuracy))
 
 
         for i in range(self.epochs):
+
+            # Decreasing learning rate
+            if i == 3:
+                self.learningRate /= 5
+                print 'New learning rate:', self.learningRate
+            if i == 10:
+                self.learningRate /= 3
+                print 'New learning rate:', self.learningRate
+            if i == 20:
+                self.learningRate /= 3
+                print 'New learning rate:', self.learningRate
+
             start = datetime.now()
             for inp, label in zip(self.trainingSet.input, self.trainingSet.label):
                 output = self._feed_forward(inp)
-                deltas = self.loss.calculateDerivative(label, output)
+                deltas = self.loss.calculateDerivative(self._to_one_hot(label), output)
 
                 for layer in range(-1, -len(self.layers) - 1, -1):
                     if layer == -1:
@@ -175,13 +196,19 @@ class MultilayerPerceptron(Classifier):
                 self._update_weights(self.learningRate)
 
             if verbose:
+                result = self.evaluate(self.trainingSet)
+                accuracy_training = accuracy_score(self.trainingSet.label, result)
+
                 result = self.evaluate(self.validationSet)
-                accuracy = accuracy_score(map(np.argmax, self.validationSet.label), result)
+                accuracy_validation = accuracy_score(self.validationSet.label, result)
                 self.performances.append(accuracy)
+
                 end = datetime.now()
-                print('Iteration {0}: Accuracy: {1} (time: {2})'.format(i, accuracy, end - start))
+                print('Iteration {0}: Accuracy Training: {1}, Accuracy Validation: {2} (time: {3})'.
+                      format(i, accuracy_training, accuracy_validation, end - start))
 
-
+                result = self.evaluate(self.trainingSet)
+                accuracy = accuracy_score(self.trainingSet.label, result)
 
 
     def classify(self, test_instance):

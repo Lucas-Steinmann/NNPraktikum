@@ -39,7 +39,7 @@ class LogisticLayer():
     """
 
     def __init__(self, nIn, nOut, weights=None,
-                 activation='sigmoid', isClassifierLayer=False):
+                 activation='sigmoid', isClassifierLayer=False, numTrainingSamples = 1):
 
         # Get activation function from string
         self.activationString = activation
@@ -68,6 +68,9 @@ class LogisticLayer():
         # Some handy properties of the layers
         self.size = self.nOut
         self.shape = self.weights.shape
+
+        # We need number of training samples for weight decay
+        self.numTrainingSamples = numTrainingSamples
 
     def forward(self, inp):
         """
@@ -144,11 +147,18 @@ class LogisticLayer():
         Update the weights of the layer
         """
 
+        # weight decay parameter
+        lmbda = 0.1
+        factors = np.zeros((self.weights.shape[0]))
+        factors.fill(1 - learningRate * lmbda / self.numTrainingSamples)
+
+        # don't use decay on bias
+        factors[-1] = 1
+
         # weight updating as gradient descent principle
-        for neuron in range(0, self.nOut):
-            self.weights[:, neuron] -= (learningRate *
-                                        self.deltas[neuron] *
-                                        self.inp)
+        # use matrix operation instead of for loop for better performance
+        self.weights = self.weights * factors[np.newaxis].T -\
+                       learningRate * self.inp[np.newaxis].T.dot(self.deltas[np.newaxis])
         
 
     def _fire(self, inp):
