@@ -201,7 +201,7 @@ class MultilayerPerceptron(Classifier):
 
                 result = self.evaluate(self.validationSet)
                 accuracy_validation = accuracy_score(self.validationSet.label, result)
-                self.performances.append(accuracy)
+                self.performances.append(accuracy_validation)
 
                 end = datetime.now()
                 print('Iteration {0}: Accuracy Training: {1}, Accuracy Validation: {2} (time: {3})'.
