@@ -4,7 +4,9 @@ import sys
 import logging
 
 import numpy as np
+import matplotlib.pyplot as plt
 
+from sklearn.metrics import accuracy_score
 from util.activation_functions import Activation
 from util.loss_functions import AbsoluteError
 from model.classifier import Classifier
@@ -17,25 +19,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
 class LogisticRegression(Classifier):
     """
     A digit-7 recognizer based on logistic regression algorithm
-
-    Parameters
-    ----------
-    train : list
-    valid : list
-    test : list
-    learningRate : float
-    epochs : positive int
-
-    Attributes
-    ----------
-    trainingSet : list
-    validationSet : list
-    testSet : list
-    weights : list
-    learningRate : float
-    epochs : positive int
     """
-
     def __init__(self, train, valid, test, learningRate=0.01, epochs=50):
 
         self.learningRate = learningRate
@@ -50,7 +34,7 @@ class LogisticRegression(Classifier):
         self.weights = 0.01 * np.random.randn(self.trainingSet.input.shape[1])
         self.threshold = np.random.rand(1)[0]
 
-    def train(self, verbose=True):
+    def train(self, verbose=True, graph=True):
         """Train the Logistic Regression.
 
         Parameters
@@ -58,44 +42,58 @@ class LogisticRegression(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
-        for epoch in range(self.epochs):
-            for example, label in zip(self.trainingSet.input, self.trainingSet.label):
-                activation, derivative = self.fire(example)
-                loss = self.loss(label, activation)
-                lossgrad = (-1 if label == 1 else 1) * loss
-                outgrad = lossgrad * derivative
-                #if verbose:
-                #    print(f"Label {label}, predicted: {activation}, loss: {loss}, grad: {outgrad}")
-                self.updateWeights(outgrad, example)
 
+        fig, train_ax = plt.subplots()
+        val_ax = train_ax.twinx()
+        train_losses = []
+        validation_scores = []
+        xs = []
+        for epoch in range(self.epochs):
+            xs.append(epoch)
+            train_loss = self.train_epoch()
+            train_losses.append(train_loss)
+            validation_scores.append(self.validation_score())
+        train_ax.plot(xs, train_losses, color="tab:blue")
+        val_ax.plot(xs, validation_scores, color="tab:red")
+        fig.tight_layout()
+        plt.show()
+
+    def validation_score(self):
+        predictions = self.evaluate(self.validationSet.input)
+        return accuracy_score(self.validationSet.label, predictions)
+
+    def train_epoch(self):
+        """ Train the network for one epoch and return the accumulated loss """
+        train_loss = 0.0
+        for example, label in zip(self.trainingSet.input, self.trainingSet.label):
+            # Forward
+            # (and calculate derivative in one swipe,
+            # otherwise the dot product would have to be cached or calculated twice)
+            activation, derivative = self.fire(example)
+            # Calculate loss
+            loss = self.loss(label, activation)
+            train_loss += loss
+            # Gradient of the loss function (absolute error)
+            lossgrad = (-1 if label == 1 else 1) * loss
+            # Gradient of non-linearity (e.g. sigmoid)
+            outgrad = lossgrad * derivative
+            # Update weight (linear with input)
+            self.updateWeights(outgrad, example)
+        return train_loss
 
     def classify(self, testInstance):
         """Classify a single instance.
-
-        Parameters
-        ----------
-        testInstance : list of floats
-
-        Returns
-        -------
-        bool :
-            True if the testInstance is recognized as a 7, False otherwise.
+        :param testInstance : list of floats
+        :return eturns True if the testInstance is recognized as a 7, False otherwise.
         """
         activation, _ = self.fire(testInstance)
         return activation > 0.5
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
-
-        Parameters
-        ----------
-        test : the dataset to be classified
+        :param test: the dataset to be classified
         if no test data, the test set associated to the classifier will be used
-
-        Returns
-        -------
-        List:
-            List of classified decisions for the dataset's entries.
+        :return: List of classified decisions for the dataset's entries.
         """
         if test is None:
             test = self.testSet.input
