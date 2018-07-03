@@ -47,6 +47,7 @@ class LogisticLayer(Layer):
         # Notice the functional programming paradigms of Python + Numpy
         self.activationString = activation
         self.activation = Activation.getActivation(self.activationString)
+        self.derivative = Activation.getDerivative(self.activationString)
 
         self.nIn = nIn
         self.nOut = nOut
@@ -84,7 +85,7 @@ class LogisticLayer(Layer):
         ndarray :
             a numpy array (1,nOut) containing the output of the layer
         """
-        pass
+        return self.activation(self.weights.dot(input))
 
     def computeDerivative(self, nextDerivatives, nextWeights):
         """
@@ -102,7 +103,7 @@ class LogisticLayer(Layer):
         ndarray :
             a numpy array containing the partial derivatives on this layer
         """
-        pass
+        return self.derivative(nextDerivatives)
 
     def updateWeights(self):
         """

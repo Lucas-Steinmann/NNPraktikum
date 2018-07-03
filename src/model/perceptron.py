@@ -35,7 +35,7 @@ class Perceptron(Classifier):
     weight : list
     """
     def __init__(self, train, valid, test,
-                                    learningRate=0.01, epochs=1000):
+                                    learningRate=0.01, epochs=50):
 
         self.learningRate = learningRate
         self.epochs = epochs
@@ -113,4 +113,4 @@ class Perceptron(Classifier):
 
     def fire(self, input):
         """Fire the output of the perceptron corresponding to the input """
-        return Activation.sign(np.dot(input, self.weight), self.threshold)
+        return Activation.sign(np.dot(input, self.weight), self.threshold) >= 0

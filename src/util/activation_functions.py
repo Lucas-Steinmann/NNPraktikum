@@ -4,8 +4,11 @@
 Activation functions which can be used within neurons.
 """
 
+import numpy as np
 from numpy import exp
 from numpy import divide
+from numpy import tanh
+from numpy import square
 
 
 class Activation:
@@ -15,48 +18,61 @@ class Activation:
 
     @staticmethod
     def sign(netOutput, threshold=0):
-        return netOutput >= threshold
+        if np.isscalar(netOutput):
+            return -1 if netOutput < 0 else (0 if netOutput == 0 else 1)
+        signed = np.ndarray(netOutput.shape)
+        signed[netOutput > threshold] = 1
+        signed[netOutput == threshold] = 0
+        signed[netOutput < threshold] = -1
+        return signed
 
     @staticmethod
     def sigmoid(netOutput):
-        pass
+        # Here you have to code the sigmoid function
+        return 1.0/(1.0+exp(-netOutput))
+
     @staticmethod
     def sigmoidPrime(netOutput):
         # Here you have to code the derivative of sigmoid function
-        # netOutput.*(1-netOutput)
-        pass
+        return Activation.sigmoid(netOutput)*(1-Activation.sigmoid(netOutput))
 
     @staticmethod
     def tanh(netOutput):
-        pass
-        
+        # Here you have to code the tanh function
+        return tanh(netOutput)
+
     @staticmethod
     def tanhPrime(netOutput):
         # Here you have to code the derivative of tanh function
-        pass
+        return 1-square(tanh(netOutput))
 
     @staticmethod
     def rectified(netOutput):
-        return lambda x: max(0.0, x)
+        rectified = np.copy(netOutput)
+        rectified[netOutput < 0] = 0
+        return rectified
 
     @staticmethod
     def rectifiedPrime(netOutput):
         # Here you have to code the derivative of rectified linear function
-        pass
+        rectified = np.copy(netOutput)
+        rectified[netOutput < 0] = 0
+        rectified[netOutput >= 0] = 1
+        return rectified
 
     @staticmethod
     def identity(netOutput):
-        return lambda x: x
+        return netOutput
 
     @staticmethod
     def identityPrime(netOutput):
         # Here you have to code the derivative of identity function
-        pass
+        return 1.0
 
     @staticmethod
     def softmax(netOutput):
-        # Here you have to code the softmax function
-        pass
+        exponated = exp(netOutput)
+        return exponated/np.sum(exponated)
 
     @staticmethod
     def getActivation(str):

@@ -6,6 +6,7 @@ import logging
 import numpy as np
 
 from util.activation_functions import Activation
+from util.loss_functions import AbsoluteError
 from model.classifier import Classifier
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
@@ -30,7 +31,7 @@ class LogisticRegression(Classifier):
     trainingSet : list
     validationSet : list
     testSet : list
-    weight : list
+    weights : list
     learningRate : float
     epochs : positive int
     """
@@ -43,9 +44,11 @@ class LogisticRegression(Classifier):
         self.trainingSet = train
         self.validationSet = valid
         self.testSet = test
+        self.errorFunction = AbsoluteError()
 
         # Initialize the weight vector with small values
-        self.weight = 0.01*np.random.randn(self.trainingSet.input.shape[1])
+        self.weights = 0.01 * np.random.randn(self.trainingSet.input.shape[1])
+        self.threshold = np.random.rand(1)[0]
 
     def train(self, verbose=True):
         """Train the Logistic Regression.
@@ -55,9 +58,17 @@ class LogisticRegression(Classifier):
         verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
+        for epoch in range(self.epochs):
+            for example, label in zip(self.trainingSet.input, self.trainingSet.label):
+                activation, derivative = self.fire(example)
+                loss = self.loss(label, activation)
+                lossgrad = (-1 if label == 1 else 1) * loss
+                outgrad = lossgrad * derivative
+                #if verbose:
+                #    print(f"Label {label}, predicted: {activation}, loss: {loss}, grad: {outgrad}")
+                self.updateWeights(outgrad, example)
 
-        pass
-        
+
     def classify(self, testInstance):
         """Classify a single instance.
 
@@ -70,7 +81,8 @@ class LogisticRegression(Classifier):
         bool :
             True if the testInstance is recognized as a 7, False otherwise.
         """
-        pass
+        activation, _ = self.fire(testInstance)
+        return activation > 0.5
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
@@ -91,10 +103,23 @@ class LogisticRegression(Classifier):
         # set.
         return list(map(self.classify, test))
 
-    def updateWeights(self, grad):
-        pass
+    def updateWeights(self, grad, input):
+        """
+        Takes the gradient of the output and the forward input and updates the weights
+        by the gradient descent method
+        :param grad: the gradient of the output (scalar)
+        :param input: the input (ndarray of input size == weight size)
+        :return: None
+        """
+        self.weights -= self.learningRate * grad * input
+        self.threshold -= self.learningRate * grad
 
     def fire(self, input):
         # Look at how we change the activation function here!!!!
         # Not Activation.sign as in the perceptron, but sigmoid
-        return Activation.sigmoid(np.dot(np.array(input), self.weight))
+        dot = np.dot(np.array(input), self.weights)
+        biaseddot = dot + self.threshold
+        return Activation.sigmoid(biaseddot), Activation.sigmoidPrime(biaseddot)
+
+    def loss(self, label, output):
+        return self.errorFunction.calculateError(label, output)
