@@ -3,6 +3,7 @@
 import sys
 import logging
 
+from math import pow
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -20,19 +21,26 @@ class LogisticRegression(Classifier):
     """
     A digit-7 recognizer based on logistic regression algorithm
     """
-    def __init__(self, train, valid, test, learningRate=0.01, epochs=50):
+    def __init__(self, train, valid, test, learningRate=0.01, epochs=50, learning_rate_step=0, step_factor=0.5):
 
-        self.learningRate = learningRate
+        self.baseLearningRate = learningRate
         self.epochs = epochs
 
         self.trainingSet = train
         self.validationSet = valid
         self.testSet = test
         self.errorFunction = AbsoluteError()
+        self.learningRateStep = learning_rate_step
+        self.stepFactor = step_factor
 
         # Initialize the weight vector with small values
         self.weights = 0.01 * np.random.randn(self.trainingSet.input.shape[1])
         self.threshold = np.random.rand(1)[0]
+
+    def learning_rate(self, epoch):
+        if self.learningRateStep != 0:
+            return self.baseLearningRate * pow(self.stepFactor, 1 + (epoch//self.learningRateStep))
+        return self.baseLearningRate
 
     def train(self, verbose=True, graph=True):
         """Train the Logistic Regression.
@@ -50,7 +58,7 @@ class LogisticRegression(Classifier):
         xs = []
         for epoch in range(self.epochs):
             xs.append(epoch)
-            train_loss = self.train_epoch()
+            train_loss = self.train_epoch(epoch)
             train_losses.append(train_loss)
             validation_scores.append(self.validation_score())
         train_ax.plot(xs, train_losses, color="tab:blue")
@@ -62,9 +70,10 @@ class LogisticRegression(Classifier):
         predictions = self.evaluate(self.validationSet.input)
         return accuracy_score(self.validationSet.label, predictions)
 
-    def train_epoch(self):
+    def train_epoch(self, epoch):
         """ Train the network for one epoch and return the accumulated loss """
         train_loss = 0.0
+        print(f"Learning rate at epoch {epoch}: {self.learning_rate(epoch)}")
         for example, label in zip(self.trainingSet.input, self.trainingSet.label):
             # Forward
             # (and calculate derivative in one swipe,
@@ -78,7 +87,7 @@ class LogisticRegression(Classifier):
             # Gradient of non-linearity (e.g. sigmoid)
             outgrad = lossgrad * derivative
             # Update weight (linear with input)
-            self.updateWeights(outgrad, example)
+            self.updateWeights(outgrad, example, self.learning_rate(epoch))
         return train_loss
 
     def classify(self, testInstance):
@@ -101,7 +110,7 @@ class LogisticRegression(Classifier):
         # set.
         return list(map(self.classify, test))
 
-    def updateWeights(self, grad, input):
+    def updateWeights(self, grad, input, learning_rate):
         """
         Takes the gradient of the output and the forward input and updates the weights
         by the gradient descent method
@@ -109,8 +118,8 @@ class LogisticRegression(Classifier):
         :param input: the input (ndarray of input size == weight size)
         :return: None
         """
-        self.weights -= self.learningRate * grad * input
-        self.threshold -= self.learningRate * grad
+        self.weights -= learning_rate * grad * input
+        self.threshold -= learning_rate * grad
 
     def fire(self, input):
         # Look at how we change the activation function here!!!!
