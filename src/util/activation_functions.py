@@ -75,6 +75,14 @@ class Activation:
         return exponated/np.sum(exponated)
 
     @staticmethod
+    def softmaxPrime(netOutput):
+        gradient = np.outer(-netOutput, netOutput)
+        for i in range(len(netOutput)):
+            gradient[i,i] = netOutput[i]*(1 - netOutput[i])
+        return gradient
+
+
+    @staticmethod
     def getActivation(str):
         """
         Returns the activation function corresponding to the given string
@@ -108,6 +116,8 @@ class Activation:
             return Activation.rectifiedPrime
         elif str == 'linear':
             return Activation.identityPrime
+        elif str == 'softmax':
+            return Activation.softmaxPrime
         else:
             raise ValueError('Cannot get the derivative of'
                              ' the activation function: ' + str)

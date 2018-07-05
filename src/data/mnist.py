@@ -5,10 +5,8 @@ from numpy.random import shuffle
 from data.data_set import DataSet
 
 
-class MNISTSeven(object):
+class MNIST(object):
     """
-    Small subset (5000 instances) of MNIST data to recognize the digit 7
-
     Parameters
     ----------
     dataPath : string
@@ -52,8 +50,8 @@ class MNISTSeven(object):
 
         train, valid = train[:numTrain], train[numTrain:]
 
-        self.trainingSet = DataSet(train, targetDigit="7")
-        self.validationSet = DataSet(valid, targetDigit="7")
-        self.testSet = DataSet(test, targetDigit="7")
+        self.trainingSet = DataSet(train)
+        self.validationSet = DataSet(valid)
+        self.testSet = DataSet(test)
 
         print("Data loaded.")

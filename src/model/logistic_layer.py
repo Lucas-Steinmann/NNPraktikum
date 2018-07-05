@@ -72,41 +72,15 @@ class LogisticLayer(Layer):
         self.shape = self.weights.shape
 
     def forward(self, input):
-        """
-        Compute forward step over the input using its weights
-
-        Parameters
-        ----------
-        input : ndarray
-            a numpy array (1,nIn + 1) containing the input of the layer
-
-        Returns
-        -------
-        ndarray :
-            a numpy array (1,nOut) containing the output of the layer
-        """
-        return self.activation(self.weights.dot(input))
+        input = np.insert(input, 0, 1, axis=0)
+        self.input = input
+        self.output = self.activation(self.weights.dot(self.input))
+        return self.output
 
     def computeDerivative(self, nextDerivatives, nextWeights):
-        """
-        Compute the derivatives (back)
+        activation_deriv = nextDerivatives.dot(self.derivative(output))
+        return np.outer(activation_deriv, self.input)
 
-        Parameters
-        ----------
-        nextDerivatives: ndarray
-            a numpy array containing the derivatives from next layer
-        nextWeights : ndarray
-            a numpy array containing the weights from next layer
-
-        Returns
-        -------
-        ndarray :
-            a numpy array containing the partial derivatives on this layer
-        """
-        return self.derivative(nextDerivatives)
-
-    def updateWeights(self):
-        """
-        Update the weights of the layer
-        """
-        pass
+    def updateWeights(self, delta, learning_rate):
+        """ Update the weights of the layer """
+        self.weights += delta * learning_rate

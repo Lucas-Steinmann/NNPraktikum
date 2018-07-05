@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 
 class DataSet(object):
     """
@@ -23,21 +25,22 @@ class DataSet(object):
     targetDigit : string
     """
 
-    def __init__(self, data, oneHot=True, targetDigit='7'):
+    def __init__(self, data: np.ndarray, targetDigit=None, num_classes=10):
 
         # The label of the digits is always the first fields
         # Doing normalization
-        self.input = 1.0*data[:, 1:]/255
-        self.label = data[:, 0]
-        self.oneHot = oneHot
+        self.input = 1.0 * data[:, 1:] / 255
+        if targetDigit:
+            self.label = data[:, 0]
+            self.label = list(map(lambda a:
+                                  1 if str(a) == targetDigit
+                                  else 0, self.label))
+            self.num_classes = 2
+        else:
+            self.num_classes = num_classes
+            self.label = np.zeros((data.shape[0], num_classes))
+            self.label[[range(data.shape[0])], data[:,0]] = 1
         self.targetDigit = targetDigit
-
-        # Transform all labels which is not the targetDigit to False,
-        # The label of targetDigit will be True,
-        if oneHot:
-            self.label = list(map(lambda a: 1 
-                            if str(a) == targetDigit else 0, 
-                            self.label))
 
     def __iter__(self):
         return self.input.__iter__()

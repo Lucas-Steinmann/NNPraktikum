@@ -26,8 +26,15 @@ class Error:
         # calculate the error between target and output
         pass
 
+class DifferentiableError(Error):
 
-class AbsoluteError(Error):
+    @abstractmethod
+    def calculateGradient(self, target, output):
+        # calculate the gradient of the error function
+        pass
+
+
+class AbsoluteError(DifferentiableError):
     """
     The Loss calculated by the number of differences between target and output
     """
@@ -38,6 +45,12 @@ class AbsoluteError(Error):
         # It is the numbers of differences between target and output
         return abs(target - output)
 
+    def calculateGradient(self, target, output):
+        # Positive if output is already greater at point otherwise negative
+        gradient = np.ones_like(target)
+        gradient[output < target] = -1
+        return gradient
+
 
 class DifferentError(Error):
     """
@@ -46,12 +59,13 @@ class DifferentError(Error):
     def errorString(self):
         self.errorString = 'different'
 
-    def calculateError(self, target, output):
+    def calculateError(self, target: np.ndarray, output: np.ndarray) -> float:
         # It is the numbers of differences between target and output
-        return target - output
+        return len((target - output).nonzero())
 
 
-class MeanSquaredError(Error):
+
+class MeanSquaredError(DifferentiableError):
     """
     The Loss calculated by the mean of the total squares of differences between
     target and output.
@@ -65,8 +79,13 @@ class MeanSquaredError(Error):
             return np.square(target - output)
         return 1.0/target.shape[0] * np.sum(np.square(target - output))
 
+    def calculateGradient(self, target, output):
+        if target is int:
+            return 2 * (output - target)
+        return 2.0/target.shape[0] * (output - target)
 
-class SumSquaredError(Error):
+
+class SumSquaredError(DifferentiableError):
     """
     The Loss calculated by the sum of the total squares of differences between
     target and output.
@@ -78,8 +97,11 @@ class SumSquaredError(Error):
         # SSE = 1/2*sum (i=1 to n) of (target_i - output_i)^2)
         return 1.0/2 * np.sum(np.square(target - output))
 
+    def calculateGradient(self, target, output):
+        return output - target
 
-class BinaryCrossEntropyError(Error):
+
+class BinaryCrossEntropyError(DifferentiableError):
     """
     The Loss calculated by the Cross Entropy between binary target and
     probabilistic output (BCE)
@@ -90,8 +112,11 @@ class BinaryCrossEntropyError(Error):
     def calculateError(self, target, output):
         return -target*log(output) - (1-target)*log(1-output)
 
+    def calculateGradient(self, target, output):
+        return -target/output + (1-target)/(1-output)
 
-class CrossEntropyError(Error):
+
+class CrossEntropyError(DifferentiableError):
     """
     The Loss calculated by the more general Cross Entropy between two
     probabilistic distributions.
@@ -101,3 +126,6 @@ class CrossEntropyError(Error):
 
     def calculateError(self, target, output):
         return sum([-t*log(o) for t,o in zip(target, output)])
+
+    def calculateGradient(self, target, output):
+        return -target*(1.0/output)
