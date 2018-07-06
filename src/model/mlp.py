@@ -207,9 +207,6 @@ class MultilayerPerceptron(Classifier):
                 print('Iteration {0}: Accuracy Training: {1}, Accuracy Validation: {2} (time: {3})'.
                       format(i, accuracy_training, accuracy_validation, end - start))
 
-                result = self.evaluate(self.trainingSet)
-                accuracy = accuracy_score(self.trainingSet.label, result)
-
 
     def classify(self, test_instance):
         # Classify an instance given the model of the classifier
