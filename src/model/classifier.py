@@ -23,3 +23,4 @@ class Classifier:
     def evaluate(self, test):
         # evaluate a whole test set given the model of the classifier
         pass
+

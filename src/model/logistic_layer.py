@@ -1,4 +1,3 @@
-
 import time
 
 import numpy as np
@@ -32,7 +31,7 @@ class LogisticLayer(Layer):
         the name of the activation function
     isClassifierLayer: bool
         to do classification or regression
-    delta : ndarray
+    gradient : ndarray
         partial derivatives
     size : positive int
         number of units in the current layer
@@ -49,21 +48,22 @@ class LogisticLayer(Layer):
         self.activation = Activation.getActivation(self.activationString)
         self.derivative = Activation.getDerivative(self.activationString)
 
-        self.nIn = nIn
+        self.nIn = nIn+1
         self.nOut = nOut
 
         # Adding bias
-        self.input = np.ndarray((nIn+1, 1))
+        self.input = np.ndarray((self.nIn, 1))
         self.input[0] = 1
         self.output = np.ndarray((nOut, 1))
-        self.delta = np.zeros((nOut, 1))
+        self.activations = np.ndarray((nOut, 1))
 
         # You can have better initialization here
         if weights is None:
             rns = np.random.RandomState(int(time.time()))
-            self.weights = rns.uniform(size=(nOut, nIn + 1))-0.5
+            self.weights = rns.uniform(size=(nOut, self.nIn))-0.5
         else:
             self.weights = weights
+        self.gradient = np.zeros_like(self.weights)
 
         self.isClassifierLayer = isClassifierLayer
 
@@ -72,15 +72,22 @@ class LogisticLayer(Layer):
         self.shape = self.weights.shape
 
     def forward(self, input):
-        input = np.insert(input, 0, 1, axis=0)
-        self.input = input
-        self.output = self.activation(self.weights.dot(self.input))
-        return self.output
+        self.input = np.insert(input, 0, 1)
+        self.output = self.weights.dot(self.input)
+        self.activations = self.activation(self.output)
+        return self.activations
 
-    def computeDerivative(self, nextDerivatives, nextWeights):
-        activation_deriv = nextDerivatives.dot(self.derivative(output))
-        return np.outer(activation_deriv, self.input)
+    def computeDerivative(self, nextDerivatives, nextActivation):
+        da_dz = self.derivative(self.output)
+        if len(da_dz.shape) == 1:
+            # did not get jacobi -> make it to matrix
+            da_dz = np.diag(da_dz)
+        dE_do = np.dot(nextDerivatives, da_dz)
+        dE_dw = np.outer(dE_do, self.input)
+        self.gradient = dE_dw
+        return np.dot(self.weights.T, dE_do)[1:]
 
-    def updateWeights(self, delta, learning_rate):
+    def updateWeights(self, learning_rate):
         """ Update the weights of the layer """
-        self.weights += delta * learning_rate
+        self.weights -= self.gradient * learning_rate
+

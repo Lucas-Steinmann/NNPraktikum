@@ -110,7 +110,7 @@ class BinaryCrossEntropyError(DifferentiableError):
         self.errorString = 'bce'
 
     def calculateError(self, target, output):
-        return -target*log(output) - (1-target)*log(1-output)
+        return -target*np.log(output) - (1-target)*np.log(1-output)
 
     def calculateGradient(self, target, output):
         return -target/output + (1-target)/(1-output)

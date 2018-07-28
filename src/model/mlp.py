@@ -4,10 +4,24 @@ from util.loss_functions import *
 from model.logistic_layer import LogisticLayer
 from model.classifier import Classifier
 from collections import OrderedDict
-
+import time
+import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 
-import sys
+
+def initialize_plot():
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+
+    red = 'tab:red'
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('loss', color=red)
+    ax1.tick_params(axis='y', labelcolor=red)
+
+    blue = 'tab:blue'
+    ax2.set_ylabel('Accuracy', color=blue)
+    ax2.tick_params(axis='y', labelcolor=blue)
+    return ax1, ax2
 
 
 class MultilayerPerceptron(Classifier):
@@ -55,7 +69,7 @@ class MultilayerPerceptron(Classifier):
                                  "non-binary classification task.")
             self.loss = BinaryCrossEntropyError()
         if loss == 'crossentropy':
-            self.loss = BinaryCrossEntropyError()
+            self.loss = CrossEntropyError()
         elif loss == 'sse':
             self.loss = SumSquaredError()
         elif loss == 'mse':
@@ -82,15 +96,12 @@ class MultilayerPerceptron(Classifier):
         input_activation = "sigmoid"
         self.layers["input"] = LogisticLayer(train.input.shape[1], 128,
                                          None, input_activation, False)
+        self.layers["class_scores"] = LogisticLayer(128, self.num_classes,
+                                             None, output_activation, True)
 
         # Output layer
-        self.layers["class_scores"] = LogisticLayer(128, self.num_classes, None, output_activation, True)
+        #self.layers["class_scores"] = LogisticLayer(127, self.num_classes, None, output_activation, True)
         self.inputWeights = input_weights
-
-        # add bias values ("1"s) at the beginning of all data sets
-        #self.trainingSet.input = np.insert(self.trainingSet.input, 0, 1, axis=1)
-        #self.validationSet.input = np.insert(self.validationSet.input, 0, 1, axis=1)
-        #self.testSet.input = np.insert(self.testSet.input, 0, 1, axis=1)
 
     def _get_layer(self, layer_index):
         return self.layers[layer_index]
@@ -122,14 +133,15 @@ class MultilayerPerceptron(Classifier):
         :return ndarray :
             a numpy array (1,1) containing the loss
         """
-        return self.loss.calculateError(target, self.blobs["class_scores"])
+        error = self.loss.calculateError(target, self.blobs["class_scores"])
+        return error
 
     def _update_weights(self, top_gradient, learning_rate):
         """ Update the weights of the layers by propagating back the error """
         gradient = top_gradient
-        for name,layer in reversed(self.layers.items()):
+        for name, layer in reversed(self.layers.items()):
             gradient = layer.computeDerivative(gradient, self.blobs[name])
-            layer.updateWeights(gradient, learning_rate)
+            layer.updateWeights(learning_rate)
 
     def train(self, verbose=True):
         """Train the Multi-layer Perceptrons
@@ -137,15 +149,49 @@ class MultilayerPerceptron(Classifier):
         :param verbose : boolean
             Print logging messages with validation accuracy if verbose is True.
         """
+        epoch_losses = []
+
         for epoch in range(self.epochs):
+            ax1, ax2 = initialize_plot()
+            epoch_start = time.time()
+            epoch_loss = 0.0
+
+            if epoch == 40:
+                self.learning_rate /= 5
+
             for example, label in zip(self.trainingSet.input, self.trainingSet.label):
+                # Forward
                 self._feed_forward(example)
+
+                # Compute loss for montoring
+                loss = self._compute_error(label)
+                epoch_loss += loss
+
+                # Backward
                 loss_grad = self.loss.calculateGradient(label, self.blobs["class_scores"])
                 self._update_weights(loss_grad, self.learning_rate)
+
+            if verbose:
+                print("Epoch %d took %d ms and had a total loss of %f"
+                      % (epoch, int((time.time()-epoch_start)*1000), epoch_loss))
+
+                epoch_losses.append(epoch_loss)
+                ax1.plot(list(range(epoch+1)), epoch_losses, color='tab:red')
+
+                self.performances.append(self.validation_score())
+                ax2.plot(list(range(epoch+1)), self.performances, color='tab:blue')
+
+                plt.show()
+
+    def validation_score(self):
+        val_pred = self.evaluate(test=self.validationSet)
+        val_labels = np.argmax(self.validationSet.label, axis=1)
+        return accuracy_score(val_labels, val_pred)
 
     def classify(self, test_instance):
         self._feed_forward(test_instance)
         return np.argmax(self.blobs["class_scores"])
+
 
     def evaluate(self, test=None):
         """Evaluate a whole dataset.
@@ -157,8 +203,7 @@ class MultilayerPerceptron(Classifier):
         """
         if test is None:
             test = self.testSet.input
-        # Once you can classify an instance, just use map for all of the test
-        # set.
+        # Once you can classify an instance, just use map for all of the test set.
         return list(map(self.classify, test))
 
     def __del__(self):

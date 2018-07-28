@@ -70,15 +70,17 @@ class Activation:
         return 1.0
 
     @staticmethod
-    def softmax(netOutput):
-        exponated = exp(netOutput)
-        return exponated/np.sum(exponated)
+    def softmax(z):
+        shifted_z = z - np.max(z)
+        exp_z = exp(shifted_z)
+        return exp_z / np.sum(exp_z)
 
     @staticmethod
-    def softmaxPrime(netOutput):
-        gradient = np.outer(-netOutput, netOutput)
-        for i in range(len(netOutput)):
-            gradient[i,i] = netOutput[i]*(1 - netOutput[i])
+    def softmaxPrime(z):
+        S = Activation.softmax(z)
+        gradient = np.outer(-S, S)
+        for i in range(len(S)):
+            gradient[i,i] = S[i]*(1 - S[i])
         return gradient
 
 

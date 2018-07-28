@@ -29,6 +29,6 @@ class Layer:
         pass
 
     @abstractmethod
-    def updateWeights(self, delta, learning_rate):
+    def updateWeights(self, learning_rate):
         """ Update the weights of the layer """
         pass

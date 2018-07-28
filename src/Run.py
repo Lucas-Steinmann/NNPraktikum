@@ -8,10 +8,11 @@ from model.perceptron import Perceptron
 from model.logistic_regression import LogisticRegression
 from model.mlp import MultilayerPerceptron
 from report.evaluator import Evaluator
+from report.perfomance_plot import PerformancePlot
 
 
 def main():
-    dataSeven = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000)
+    #dataSeven = MNISTSeven("../data/mnist_seven.csv", 3000, 1000, 1000)
     data = MNIST("../data/mnist_seven.csv", 3000, 1000, 1000)
     #myStupidClassifier = StupidRecognizer(dataSeven.trainingSet,
     #                                      dataSeven.validationSet,
@@ -30,7 +31,9 @@ def main():
     myMLPClassifier = MultilayerPerceptron(data.trainingSet,
                                            data.validationSet,
                                            data.testSet,
-                                           learning_rate=0.005,
+                                           output_activation='softmax',
+                                           loss='crossentropy',
+                                           learning_rate=0.05,
                                            epochs=60)
 
     # Train the classifiers
@@ -66,19 +69,21 @@ def main():
 
     print("Result of the stupid recognizer:")
     # evaluator.printComparison(data.testSet, stupidPred)
-    evaluator.printAccuracy(data.testSet, stupidPred)
+    #evaluator.printAccuracy(data.testSet, stupidPred)
 
     print("\nResult of the Perceptron recognizer:")
     # evaluator.printComparison(data.testSet, perceptronPred)
-    evaluator.printAccuracy(data.testSet, perceptronPred)
+    #evaluator.printAccuracy(data.testSet, perceptronPred)
 
     print("\nResult of the Logistic Regression recognizer:")
     # evaluator.printComparison(data.testSet, perceptronPred)
-    evaluator.printAccuracy(data.testSet, lrPred)
+    #evaluator.printAccuracy(data.testSet, lrPred)
 
     print("\nResult of the MultiLayer Perceptron recognizer:")
     # evaluator.printComparison(data.testSet, perceptronPred)
-    evaluator.printAccuracy(data.testSet, mlpPred)
+    evaluator.printClassificationResult(data.testSet, mlpPred, [str(x) for x in range(10)])
+    plot = PerformancePlot("Multilayer perceptron")
+    plot.draw_performance_epoch(myMLPClassifier.performances, myMLPClassifier.epochs)
 
 
 if __name__ == '__main__':
